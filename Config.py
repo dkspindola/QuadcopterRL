@@ -16,12 +16,12 @@ config = {
         # thrust to weight ratio []
         "thrust_to_weight": 1.9,
         # torque to thrust coefficient []
-        "torque_to_thrust": 0.006,
+        "thrust_to_torque": 0.006,
 
         # matrix of inertia [kg*m^2]
-        "inertia": 10e-6 * np.array([[16.5717, 0.8308,  0.7183],
-                                     [0.8308, 16.6556,  1.8002],
-                                     [0.7183,  1.8002, 29.2617]]),
+        "inertia": 10e-6 * np.array([[16.5717, 0,       0],
+                                     [0, 16.6556,       0],
+                                     [0,       0, 29.2617]]),
 
         # distance from quadcopter center to propeller center[m]
         "arm_length": 0.065,
@@ -54,8 +54,6 @@ config = {
         "max_pos_err": 2 * np.ones(3),
         # maximal linear velocity in any direction in world coordinate system [m/s]
         "max_lin_vel": np.ones(3),
-        # maximal rotation matrix []
-        "max_rot_matrix": np.ones((3, 3)),
         # maximal angular velocity around any axis in body coordinate system [rad/s]
         "max_ang_vel": np.array([2 * np.pi, 2 * np.pi, 2 * np.pi]),
 
@@ -65,8 +63,10 @@ config = {
     "model": {
        "fcnet_hiddens": [64, 64],
     },
-    "num_workers": 1,
+    "num_workers": 3,
+    "num_cpus_per_worker": 2,
     "framework": "torch",
+    "no_done_at_end": True,
 }
 
 stop = {

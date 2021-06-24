@@ -5,14 +5,15 @@ import random
 
 from ray.rllib.env.env_context import EnvContext
 
-from MathUtils import orthogonalize, generate_skew_symmetric_matrix
+from MathUtils import calc_rot_matrix, calc_angles, euler_rot_matrix
+
 
 class Quadcopter(gym.Env):
 
     def __init__(self, config: EnvContext):
         # time step [s]
         self.dt = config["dt"]
-        # counter used for re-orthogonolization of rotation matrix []
+        # number of computed time steps []
         self.counter = 0
 
         # gravitational acceleration in world coordinate system [m/s^2]
@@ -25,7 +26,7 @@ class Quadcopter(gym.Env):
         # thrust to weight ratio []
         self.thrust_to_weight = config["thrust_to_weight"]
         # torque to thrust coefficient []
-        self.torque_to_thrust = config["torque_to_thrust"]
+        self.thrust_to_torque = config["thrust_to_torque"]
         # distance from quadcopter center to propeller center[m]
         self.arm_length = config["arm_length"]
 
@@ -70,14 +71,8 @@ class Quadcopter(gym.Env):
         self.max_pos_err = config["max_pos_err"]
         # maximal linear velocity [m/s]
         self.max_lin_vel = config["max_lin_vel"]
-        # maximal rotation matrix []
-        self.max_rot_matrix = config["max_rot_matrix"]
         # maximal angular velocity [rad/s]
         self.max_ang_vel = config["max_ang_vel"]
-        # combine all max values in one array
-        bounds = np.append(self.max_pos_err, self.max_lin_vel)
-        bounds = np.append(bounds, self.max_rot_matrix)
-        self.bounds = np.append(bounds, self.max_ang_vel)
 
         # non negative scalar weights for reward/cost function
         self.weights = config["weights"]
@@ -153,19 +148,20 @@ class Quadcopter(gym.Env):
         """
         # factor of angle
         factor = np.sqrt(2) / 2
-        # total torque in the body coordinate system [N*m]
-        total_torque = np.array([np.dot(np.array([-1, -1, 1,  1]), thrust) * self.arm_length * factor,
-                                 np.dot(np.array([-1,  1, 1, -1]), thrust) * self.arm_length * factor,
-                                 np.dot(np.array([1,  -1, 1, -1]), thrust) * self.torque_to_thrust])
+
+        # thruster torque caused by thruster forces in body coordinate system [Nm]
+        thruster_torque = np.array([np.dot(np.array([-1, -1, 1,  1]), thrust) * self.arm_length * factor,
+                                    np.dot(np.array([-1,  1, 1, -1]), thrust) * self.arm_length * factor,
+                                    0])
+
+        # thruster created around the z-axis caused by rotors different rotations in body coordinate system [Nm]
+        rotation_torque = np.array([0, 0, self.thrust_to_torque * np.dot(np.array([1, -1, 1, -1]), thrust)])
+
+        # add up torques
+        total_torque = thruster_torque + rotation_torque
 
         return np.dot(np.linalg.inv(self.inertia),
-                      (total_torque - self.cur_ang_vel * np.dot(self.cur_ang_vel, self.inertia)))
-
-    def calc_rot_matrix_derivative(self):
-        # rotate current angular velocity vector to world coordinate system [deg/s]
-        rot_cur_ang_vel = np.dot(self.cur_ang_vel, self.cur_rot_matrix)
-
-        return np.dot(generate_skew_symmetric_matrix(rot_cur_ang_vel), self.cur_rot_matrix)
+                      (total_torque - np.cross(self.cur_ang_vel, np.dot(self.cur_ang_vel, self.inertia))))
 
     def step(self, action):
         # squash action to (-1, 1)
@@ -194,27 +190,19 @@ class Quadcopter(gym.Env):
         ang_acc = self.calc_ang_acc(thrust)
         # calculate next angular velocity by using first order explicit euler method for integration [rad/s]
         self.cur_ang_vel = self.cur_ang_vel + ang_acc * self.dt
-        # calculate current derivative of rotation matrix [1/s]
-        rot_matrix_derivative = self.calc_rot_matrix_derivative()
-        # calculate next rotation matrix by using first order explicit euler method for integration []
-        rot_matrix = self.cur_rot_matrix + rot_matrix_derivative * self.dt
 
-        # multiply rotation matrix and its inverse
-        identity_rotation = np.dot(rot_matrix, np.linalg.inv(rot_matrix))
-        # compute error to real identity matrix
-        identity_err = identity_rotation - np.identity(3)
-        # re-orthogonalize rotation matrix if orthogonality criteria (||RR^T - I||_1 >= 0.01) fails or every 0.5s
-        if (np.linalg.norm(identity_err, 1) >= 0.01) or (self.dt * self.counter >= 0.5):
-            rot_matrix = orthogonalize(rot_matrix)
-            self.counter = 0
+        # convert rotation matrix to euler angles
+        angles = np.array(calc_angles(self.cur_rot_matrix))
+        # compute rate of euler angles (angles_' = E^(-1)(angles_) * w_)
+        euler_ang_vel = np.dot(np.linalg.inv(euler_rot_matrix(angles[0], angles[1])), self.cur_ang_vel)
+        # compute new angles by  make an euler integration step [rad]
+        angles = angles + euler_ang_vel * self.dt
 
-        # clip elements of rotation matrix to given interval to avoid out of bounds errorsssssssssss
-        self.cur_rot_matrix = rot_matrix
+        # calculate new rotation matrix by converting new angles to rotation matrix []
+        self.cur_rot_matrix = calc_rot_matrix(angles[0], angles[1], angles[2])
 
         # compute state
         state = self.calc_state()
-
-        print(state)
 
         # rotation angle along the axis of rotation of identity matrix to current rotation matrix [rad]
         rot_ang = np.arccos((np.trace(self.cur_rot_matrix) - 1) / 2)
@@ -230,11 +218,11 @@ class Quadcopter(gym.Env):
         # cost is negative reward
         reward = -1 * cost
 
-        done = (np.array_equal(self.cur_pos, self.end_pos) and
-                np.array_equal(self.cur_lin_vel, self.end_lin_vel) and
-                np.array_equal(self.cur_rot_matrix[:, 2], self.end_rot_matrix[:, 2]) and
-                np.array_equal(self.cur_ang_vel, self.end_ang_vel)
-                )
+        # increase counter
+        self.counter += 1
+
+        # done if simulated seconds pass
+        done = self.counter * self.dt >= 4
 
         return state, reward, done, {}
 
@@ -247,18 +235,19 @@ class Quadcopter(gym.Env):
         # thrust to weight ratio []
         self.thrust_to_weight = 0.2 * random.random() + 1.8
         # torque to thrust coefficient []
-        self.torque_to_thrust = 0.002 * random.random() + 0.005
+        self.thrust_to_torque = 0.002 * random.random() + 0.005
         # distance from quadcopter center to propeller center[m]
         self.arm_length = 0.02 * np.random.random() + 0.055
 
         # reset current position of the agent [m]
-        self.cur_pos = self.start_pos
+        self.cur_pos = np.random.choice(np.array([-1, 1]), 3) * self.max_pos_err * np.random.rand(3) + self.end_pos
         # reset current linear velocity of the agent in the world coordinate system [m/s]
-        self.cur_lin_vel = self.start_lin_vel
+        self.cur_lin_vel = np.random.choice(np.array([-1, 1]), 3) * self.max_lin_vel * np.random.rand(3)
         # reset current rotation matrix from body to world coordinate system
-        self.cur_rot_matrix = self.start_rot_matrix
+        self.cur_rot_matrix = calc_rot_matrix(2 * np.pi * np.random.rand(), 2 * np.pi * np.random.rand(),
+                                              2 * np.pi * np.random.rand())
         # reset current angular velocity of the agent in the body coordinate system [rad/s]
-        self.cur_ang_vel = self.start_ang_vel
+        self.cur_ang_vel = np.random.choice(np.array([-1, 1]), 3) * self.max_ang_vel * np.random.rand(3)
 
         # motor 2% settling time [s]
         self.settling_time = 0.15
