@@ -81,3 +81,27 @@ def euler_rot_matrix(roll, pitch):
     return np.array([[1,          0,            -sin(pitch)],
                      [0,  cos(roll), cos(pitch) * sin(roll)],
                      [0, -sin(roll), cos(pitch) * cos(roll)]])
+
+
+def randomization(values, percentages=0, offsets=0):
+    """
+    Helps randomization of quadcopter parameters.
+    :param values:
+    :param percentages:
+    :param offsets:
+    :return:
+    """
+    factors = values.flatten() * percentages + offsets
+
+    return np.reshape((2 * np.random.rand(len(factors)) - 1) * factors + values.flatten(), values.shape)
+
+
+def calc_rod_inertia(mass, length, angle):
+    """
+
+    :param mass:
+    :param length:
+    :param angle:
+    :return:
+    """
+    return 1/12 * mass * length**2 * sin(angle)**2
