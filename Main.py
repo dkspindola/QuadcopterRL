@@ -15,6 +15,6 @@ if __name__ == "__main__":
 
     registry.register_env("Quadcopter", lambda c: Quadcopter(c))
 
-    results = tune.run("PPO", config=config, checkpoint_freq=10, restore="/home/davi/ray_results/PPO/PPO_Quadcopter_e9889_00000_0_2021-07-01_11-51-31/checkpoint_000780/checkpoint-780")
+    results = tune.run("PPO", config=config, checkpoint_freq=10, restore="/home/davi/ray_results/PPO/PPO_Quadcopter_2729b_00000_0_2021-07-12_11-33-02/checkpoint_000400/checkpoint-400")
 
     ray.shutdown()
