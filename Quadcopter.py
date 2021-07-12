@@ -51,9 +51,9 @@ class Quadcopter(gym.Env):
         self.inertia = None
         # motor 2% settling time [s]
         self.settling_time = None
-        # thrust to weight ratio []
+        # thrust to weight ratio [kg/N]
         self.thrust_to_weight = None
-        # torque to thrust coefficient []
+        # torque to thrust coefficient [s^(-2)]
         self.thrust_to_torque = None
 
         # current position of the agent [m]
@@ -155,13 +155,12 @@ class Quadcopter(gym.Env):
                 The calculated angular acceleration vector in body coordinate system.
         """
         # thruster torque caused by thruster forces in body coordinate system [Nm]
-        thruster_torque = np.concatenate([np.dot(np.array([-1, -1, 1,  1]), thrust) * self.arm_length,
-                                          np.dot(np.array([-1,  1, 1, -1]), thrust) * self.arm_length,
-                                          np.array([0])])
+        thruster_torque = np.array([np.dot(np.array([-1, -1, 1,  1]), thrust) * self.arm_length,
+                                    np.dot(np.array([-1,  1, 1, -1]), thrust) * self.arm_length,
+                                    0])
 
         # thruster created around the z-axis caused by rotors different rotations in body coordinate system [Nm]
-        rotation_torque = np.concatenate([np.array([0]), np.array([0]),
-                                          self.thrust_to_torque * np.dot(np.array([1, -1, 1, -1]), thrust)])
+        rotation_torque = np.array([0, 0, self.thrust_to_torque * np.dot(np.array([1, -1, 1, -1]), thrust)])
 
         # add up torques
         total_torque = thruster_torque + rotation_torque
@@ -185,21 +184,22 @@ class Quadcopter(gym.Env):
 
         return np.array([xx, yy, zz]) * np.eye(3)
 
-    def step(self, action):
-        # squash action to (-1, 1)
-        action = tanh(action)
-
+    def calc_motor_lag(self, action):
         # normalized motor thrust input
         norm_thrust = 0.5 * (action + 1)
         # normalized angular velocity
         norm_ang_vel = np.sqrt(norm_thrust)
 
         # motor lag simulated with discrete-time first-order low-pass filter
-        self.cur_motor_lag = self.cur_motor_lag + 4 * self.dt / self.settling_time * (norm_ang_vel - self.cur_motor_lag)
-        # motor noise simulated with discrete Ornstein-Uhlenbeck processsssss
-        motor_noise = np.array([0, 0, 0, 0])
+        return self.cur_motor_lag + 4 * self.dt / self.settling_time * (norm_ang_vel - self.cur_motor_lag)
+
+    def step(self, action):
+        # squash action to (-1, 1)
+        action = tanh(action)
+
+        self.cur_motor_lag = self.calc_motor_lag(action)
         # final motor thrust [N]
-        thrust = self.max_thrust * np.square(self.cur_motor_lag + motor_noise)
+        thrust = self.max_thrust * np.square(self.cur_motor_lag)
 
         # calculate current linear acceleration [m/s^2]
         lin_acc = self.calc_lin_acc(thrust)
@@ -250,17 +250,17 @@ class Quadcopter(gym.Env):
         self.counter = 0
 
         # mass of agent [kg]
-        self.mass = randomization(np.array([self.standard_mass]), 0.1)
+        self.mass = self.standard_mass
         # distance from quadcopter center to propeller center[m]
-        self.arm_length = randomization(np.array([self.standard_arm_length]), 0.1)
+        self.arm_length = self.standard_arm_length
         #
         self.inertia = self.calc_inertia()
         # motor 2% settling time [s]
-        self.settling_time = randomization(np.array([self.standard_settling_time]), 0.1)
+        self.settling_time = self.standard_settling_time
         # thrust to weight ratio []
-        self.thrust_to_weight = randomization(np.array([self.standard_thrust_to_weight]), 0.1)
+        self.thrust_to_weight = self.standard_thrust_to_weight
         # torque to thrust coefficient []
-        self.thrust_to_torque = randomization(np.array([self.standard_thrust_to_torque]), 0.1)
+        self.thrust_to_torque = self.standard_thrust_to_torque
 
         self.max_thrust = 1 / 4 * self.mass * np.abs(self.grav_acc[2]) * self.thrust_to_weight
 
