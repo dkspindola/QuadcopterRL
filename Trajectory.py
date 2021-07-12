@@ -9,7 +9,7 @@ from PlotUtils import plot
 ray.init()
 
 checkpoint_dir = \
-    "/home/davi/ray_results/PPO/PPO_Quadcopter_ae552_00000_0_2021-07-01_15-46-05/checkpoint_001300/checkpoint-1300"
+    "/home/davi/ray_results/PPO/PPO_Quadcopter_58f98_00000_0_2021-07-12_13-50-26/checkpoint_000650/checkpoint-650"
 
 agent = ppo.PPOTrainer(config=config, env=Quadcopter)
 agent.restore(checkpoint_dir)
@@ -18,17 +18,18 @@ env = Quadcopter(config["env_config"])
 
 actions = np.array([])
 observations = np.array([])
-
-episode_reward = 0
 obs = env.reset()
-for counter in range(4000):
+episode_reward = 0
+
+for counter in range(2400):
+    observations = np.concatenate([observations, obs])
+
     action = np.array(agent.compute_action(obs))
     obs, reward, done, info = env.step(action)
 
     episode_reward += reward
 
     actions = np.concatenate([actions, action])
-    observations = np.concatenate([observations, obs])
 
-plot(actions, observations, env)
+plot(actions, observations, env, episode_reward)
 ray.shutdown()
