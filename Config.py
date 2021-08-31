@@ -21,13 +21,13 @@ config = {
         "standard_thrust_to_torque": 0.006,
 
         # maximal positional error to end position in world coordinate system [m]
-        "max_pos_err": np.array([2, 2, 2]),
+        "max_pos_err": np.array([0, 0, 0]),
         # maximal linear velocity in any direction in world coordinate system [m/s]
-        "max_lin_vel": np.array([1, 1, 1]),
+        "max_lin_vel": np.array([0, 0, 0]),
         # maximal angles in body coordinate system to sample from [rad]
-        "max_ang": np.array([np.pi, np.pi, np.pi]),
+        "max_ang": np.array([0, 0, 0]),
         # maximal angular velocity around any axis in body coordinate system [rad/s]
-        "max_ang_vel": np.array([2 * np.pi, 2 * np.pi, 2 * np.pi]),
+        "max_ang_vel": np.array([0, 0, 0]),
 
         # non negative scalar weights (pos_err, lin_vel_err, rot_ang, ang_vel_err, action) for reward/cost function
         "weights": np.array([1, 0, 0, 0.1, 0.05]),
@@ -35,8 +35,8 @@ config = {
     "model": {
        "fcnet_hiddens": [64, 64],
     },
-    "num_workers": 2,
-    "num_cpus_per_worker": 3,
+    "num_workers": 6,
+    "num_cpus_per_worker": 1,
     "framework": "torch",
     "horizon": 800,
     "no_done_at_end": True,

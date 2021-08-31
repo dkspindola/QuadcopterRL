@@ -7,10 +7,11 @@ from mpl_toolkits.mplot3d import Axes3D
 from MathUtils import calc_angles
 
 
-def plot(actions, observations, env, reward):
+def plot(actions, angles, observations, env, reward):
     """
 
     :param actions:
+    :param angles:
     :param observations:
     :param env:
     :param reward:
@@ -31,24 +32,32 @@ def plot(actions, observations, env, reward):
     ax.text(observations[0], observations[1], observations[2], "start")
     ax.scatter(0, 0, 0, color="green")
     ax.text(0, 0, 0, "goal")
-    ax.quiver([observations[0]], [observations[1]], [observations[2]], observations[3], observations[4], observations[5],
-              length=np.linalg.norm([observations[3], observations[4], observations[5]]))
+    ax.quiver([observations[0]], [observations[1]], [observations[2]],
+              observations[3], observations[4], observations[5],
+              length=np.linalg.norm([observations[3], observations[4], observations[5]]),
+              arrow_length_ratio=.1,
+              color="tab:pink")
     ax.plot(observations[0::18], observations[1::18], observations[2::18], color="tab:purple", label="position in [m]")
 
     ax = fig.add_subplot(3, 4, 2)
     ax.set_xlabel("time in [s]")
-    ax.set_ylabel("linear velocity in [m/s]")
+    ax.set_ylabel("position error in [m]")
+    ax.plot(time, observations[0::18], label="x")
+    ax.plot(time, observations[1::18], label="y")
+    ax.plot(time, observations[2::18], label="z")
+    ax.legend()
+
+    ax = fig.add_subplot(3, 4, 3)
+    ax.set_xlabel("time in [s]")
+    ax.set_ylabel("linear velocity error in [m/s]")
     ax.plot(time, observations[3::18], label="d(x)/d(t)")
     ax.plot(time, observations[4::18], label="d(y)/d(t)")
     ax.plot(time, observations[5::18], label="d(z)/d(t)")
     ax.legend()
 
-    angles = np.array([])
-    for i in range(6, len(observations), 18):
-        angles = np.append(angles, np.array(calc_angles(np.reshape(observations[i:i + 9], (3, 3)))))
-    ax = fig.add_subplot(3, 4, 3)
+    ax = fig.add_subplot(3, 4, 5)
     ax.set_xlabel("time in [s]")
-    ax.set_ylabel("angle in [rad]")
+    ax.set_ylabel("angle error in [rad]")
     ax.plot(time, angles[0::3], label="roll")
     ax.plot(time, angles[1::3], label="pitch")
     ax.plot(time, angles[2::3], label="yaw")
@@ -57,32 +66,29 @@ def plot(actions, observations, env, reward):
     euclidean_distances = np.array([])
     for i in range(0, len(observations), 18):
         euclidean_distances = np.append(euclidean_distances, np.linalg.norm(observations[i:i+3]))
-
     ax = fig.add_subplot(3, 4, 4)
-    ax.text(0, 1, "mean_pos_err: " + str(np.mean(euclidean_distances)) + "m")
-    ax.text(0, 0.9, "dt: " + str(env.dt) + "s")
-    ax.text(0, 0.8, "mass: " + str(env.mass) + "kg")
-    ax.text(0, 0.7, "arm_length: " + str(env.arm_length) + "m")
-    ax.text(0, 0.6, "settling_time: " + str(env.settling_time) + "s")
-    ax.text(0, 0.5, "thrust_to_weight: " + str(env.thrust_to_weight) + "kg/N")
-    ax.text(0, 0.4, "thrust_to_torque: " + str(env.thrust_to_torque) + "s^(-2)")
-    ax.text(0, 0.3, "start_pos_err: " + str(observations[:3]))
-    ax.text(0, 0.2, "start_lin_vel_err: " + str(observations[3:6]))
-    ax.text(0, 0.1, "start_ang_vel_err: " + str(observations[15:18]))
-    ax.text(0, 0, "episode_reward: " + str(reward))
+    ax.text(0, 0.9, "dt: " + str(env.dt) + " s", fontsize=8)
+    ax.text(0, 0.8, "mass: " + str(round(env.mass, 4)) + " kg", fontsize=8)
+    ax.text(0, 0.7, "arm_length: " + str(round(env.arm_length, 4)) + " m", fontsize=8)
+    ax.text(0, 0.6, "settling_time: " + str(round(env.settling_time, 4)) + " s", fontsize=8)
+    ax.text(0, 0.5, "thrust_to_weight: " + str(round(env.thrust_to_weight, 4)) + " kg/N", fontsize=8)
+    ax.text(0, 0.4, "thrust_to_torque: " + str(round(env.thrust_to_torque, 4)) + " s^(-2)", fontsize=8)
     ax.axis("off")
 
-    ax = fig.add_subplot(3, 4, 5)
-    ax.set_xlabel("time in [s]")
-    ax.set_ylabel("angular velocity in [rad/s]")
-    ax.plot(time, observations[15::18], label="d(alpha)/d(t)")
-    ax.legend()
+    ax = fig.add_subplot(3, 4, 8)
+    ax.text(0, 1, "start_pos_err: " + str(np.round(observations[:3], 4)) + " m", fontsize=8)
+    ax.text(0, 0.9, "start_lin_vel_err: " + str(np.round(observations[3:6], 4)) + " m/s", fontsize=8)
+    ax.text(0, 0.8, "start_ang: " + str(np.round(angles[:3], 4)) + " rad", fontsize=8)
+    ax.text(0, 0.7, "start_ang_vel_err: " + str(np.round(observations[15:18], 4)) + " rad/s", fontsize=8)
+    ax.text(0, 0.1, "mean_pos_err: " + str(np.round(np.mean(euclidean_distances), 4)) + " m", fontsize=8)
+    ax.text(0, 0, "episode_reward: " + str(round(reward, 4)), fontsize=8)
+    ax.axis("off")
+
     ax = fig.add_subplot(3, 4, 6)
     ax.set_xlabel("time in [s]")
+    ax.set_ylabel("angular velocity error in [rad/s]")
+    ax.plot(time, observations[15::18], label="d(alpha)/d(t)")
     ax.plot(time, observations[16::18], color="tab:orange", label="d(beta)/d(t)")
-    ax.legend()
-    ax = fig.add_subplot(3, 4, 7)
-    ax.set_xlabel("time in [s]")
     ax.plot(time, observations[17::18], color="tab:green", label="d(gamma)/d(t)")
     ax.legend()
 
@@ -102,6 +108,108 @@ def plot(actions, observations, env, reward):
     ax = fig.add_subplot(3, 4, 12)
     ax.set_xlabel("time in [s]")
     ax.plot(time, actions[3::4], color="tab:red", label="action 3")
+
+    ax.legend()
+
+    plt.show()
+
+
+def plot_csv(pos_errs, lin_vel_errs, rot_mat_0, rot_mat_1, rot_mat_2, ang_vel_errs, actions, stabilizer_angles):
+    """
+
+    :param pos_errs:
+    :param lin_vel_errs:
+    :param rot_mat_0:
+    :param rot_mat_1:
+    :param rot_mat_2:
+    :param ang_vel_errs:
+    :param actions:
+    :param stabilizer_angles:
+    :return:
+    """
+    # set font size
+    mpl.rcParams['legend.fontsize'] = 10
+    fig = plt.figure(dpi=100, edgecolor='black', facecolor='white')
+
+    ax = fig.add_subplot(3, 4, 1, projection="3d")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("z")
+    ax.scatter(pos_errs[1], pos_errs[2], pos_errs[3], color="grey")
+    ax.text(pos_errs[1], pos_errs[2], pos_errs[3], "start")
+    ax.scatter(0, 0, 0, color="green")
+    ax.text(0, 0, 0, "goal")
+    ax.quiver([pos_errs[1]], [pos_errs[2]], [pos_errs[3]],
+              lin_vel_errs[1], lin_vel_errs[2], lin_vel_errs[3],
+              length=np.linalg.norm([lin_vel_errs[1], lin_vel_errs[2], lin_vel_errs[3]]),
+              arrow_length_ratio=.1,
+              color="tab:pink")
+    ax.plot(pos_errs[1::4], pos_errs[2::4], pos_errs[3::4], color="tab:purple", label="position in [m]")
+
+    ax = fig.add_subplot(3, 4, 2)
+    ax.set_xlabel("timestamp in []")
+    ax.set_ylabel("position error in [m]")
+    ax.plot(pos_errs[0::4], pos_errs[1::4], label="x")
+    ax.plot(pos_errs[0::4], pos_errs[2::4], label="y")
+    ax.plot(pos_errs[0::4], pos_errs[3::4], label="z")
+    ax.legend()
+
+    ax = fig.add_subplot(3, 4, 3)
+    ax.set_xlabel("timestamp in []")
+    ax.set_ylabel("linear velocity error in [m/s]")
+    ax.plot(lin_vel_errs[0::4], lin_vel_errs[1::4], label="d(x)/d(t)")
+    ax.plot(lin_vel_errs[0::4], lin_vel_errs[2::4], label="d(y)/d(t)")
+    ax.plot(lin_vel_errs[0::4], lin_vel_errs[3::4], label="d(z)/d(t)")
+    ax.legend()
+
+    angles = np.array([])
+    for i in range(0, len(rot_mat_2), 4):
+        rot_mat_col_0 = rot_mat_0[i + 1:i + 4]
+        rot_mat_col_1 = rot_mat_1[i + 1:i + 4]
+        rot_mat_col_2 = rot_mat_2[i + 1:i + 4]
+        rot_mat = np.concatenate([rot_mat_col_0, rot_mat_col_1, rot_mat_col_2])
+        angles = np.append(angles, rot_mat_0[i])
+        angles = np.append(angles, np.array(calc_angles(np.reshape(rot_mat, (3, 3)))))
+    ax = fig.add_subplot(3, 4, 5)
+    ax.set_xlabel("timestamp in []")
+    ax.set_ylabel("angle error in [rad]")
+    ax.plot(angles[0::4], angles[1::4], label="roll")
+    ax.plot(angles[0::4], angles[2::4], label="pitch")
+    ax.plot(angles[0::4], angles[3::4], label="yaw")
+    ax.legend()
+
+    ax = fig.add_subplot(3, 4, 6)
+    ax.set_xlabel("timestamp in []")
+    ax.set_ylabel("angle error in [rad]")
+    ax.plot(stabilizer_angles[0::4], stabilizer_angles[1::4] / 180 * np.pi, label="roll")
+    ax.plot(stabilizer_angles[0::4], stabilizer_angles[2::4] / 180 * np.pi, label="pitch")
+    ax.plot(stabilizer_angles[0::4], stabilizer_angles[3::4] / 180 * np.pi, label="yaw")
+    ax.legend()
+
+    ax = fig.add_subplot(3, 4, 7)
+    ax.set_xlabel("timestamp in []")
+    ax.set_ylabel("angular velocity error in [rad/s]")
+    ax.plot(ang_vel_errs[0::4], ang_vel_errs[1::4], label="d(alpha)/d(t)")
+    ax.plot(ang_vel_errs[0::4], ang_vel_errs[2::4], label="d(beta)/d(t)")
+    ax.plot(ang_vel_errs[0::4], ang_vel_errs[3::4], label="d(gamma)/d(t)")
+    ax.legend()
+
+    ax = fig.add_subplot(3, 4, 9)
+    ax.set_xlabel("timestamp in []")
+    ax.set_ylabel("action in []")
+    ax.plot(actions[0::5], actions[1::5], color="tab:red", label="action 0")
+    ax.legend()
+    ax = fig.add_subplot(3, 4, 10)
+    ax.set_xlabel("timestamp in []")
+    ax.plot(actions[0::5], actions[2::5], color="tab:red", label="action 1")
+    ax.legend()
+    ax = fig.add_subplot(3, 4, 11)
+    ax.set_xlabel("timestamp in []")
+    ax.plot(actions[0::5], actions[3::5], color="tab:red", label="action 2")
+    ax.legend()
+    ax = fig.add_subplot(3, 4, 12)
+    ax.set_xlabel("timestamp in []")
+    ax.plot(actions[0::5], actions[4::5], color="tab:red", label="action 3")
 
     ax.legend()
 

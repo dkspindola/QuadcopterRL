@@ -1,26 +1,19 @@
 import numpy as np
 from numpy import sin, cos, arcsin, arccos
 from numpy import ndarray
+from Interval import Interval
 
 
 def calc_rot_matrix(roll=0, pitch=0, yaw=0):
     """
-        Calculate rotation matrix (3x3) around x-, y- and z-axis.
+    Calculate rotation matrix (3x3) around x-, y- and z-axis.
 
-        Parameters
-        ----------
-        roll : float
-            Rotation angle around x-axis in radians.
-        pitch : float
-            Rotation angle around y-axis in radians.
-        yaw : float
-            Rotation angle around z-axis in radians.
-
-        Returns
-        -------
-        out : ndarray
-            Rotation matrix given by alpha, beta, and gamma angles.
+    :param roll: Rotation angle around x-axis in radians.
+    :param pitch: Rotation angle around y-axis in radians.
+    :param yaw: Rotation angle around z-axis in radians.
+    :return: Rotation matrix given by alpha, beta, and gamma angles.
     """
+
     # rotation around x-axis
     r_x = np.array([[1,         0,          0],
                     [0, cos(roll), -sin(roll)],
@@ -42,66 +35,72 @@ def calc_rot_matrix(roll=0, pitch=0, yaw=0):
 
 def calc_angles(matrix):
     """
-        Compute roll, pitch and yaw angles from rotation matrix.
+    Compute roll, pitch and yaw angles from rotation matrix.
 
-        Parameters
-        ----------
-        matrix : ndarray
-            Rotation matrix from body to world coordinate system.
-
-        Returns
-        -------
-        out : float, float, float
-            Roll, pitch and yaw angles calculated from rotation matrix.
+    :param matrix: Rotation matrix from body to world coordinate system.
+    :return: Roll, pitch and yaw angles calculated from rotation matrix.
     """
-    pitch = arcsin(np.clip(-1 * matrix[2][0], -1, 1))
-    yaw = arccos(np.clip(matrix[0][0] / cos(pitch), -1, 1))
-    roll = arccos(np.clip(matrix[2][2] / cos(pitch), -1, 1))
+    """
+    pitch = arcsin(-1 * matrix[2][0])
+    yaw = arccos(matrix[0][0] / cos(pitch))
+    roll = arccos(matrix[2][2] / cos(pitch))
+    """
+    sy = np.sqrt(matrix[0][0]**2 + matrix[1][0]**2)
+
+    roll = np.arctan2(matrix[2][1], matrix[2][2])
+    pitch = np.arctan2(-matrix[2][0], sy)
+    yaw = np.arctan2(matrix[1][0], matrix[0][0])
 
     return roll, pitch, yaw
 
 
 def euler_rot_matrix(roll, pitch):
     """
-        Calculate rotation matrix which converts angular velocity in body coordinate system to
-        roll, pitch and yaw rates.
+    Calculate rotation matrix which converts angular velocity in body coordinate system to roll, pitch and yaw rates.
 
-        Parameters
-        ----------
-        roll : float
-            Rotation angle around x-axis in radians.
-        pitch : float
-            Rotation angle around y-axis in radians.
-
-        Returns
-        -------
-        out : float, float, float
-            Roll, pitch and yaw angles calculated from rotation matrix.
+    :param roll: Rotation angle around x-axis in radians.
+    :param pitch: Rotation angle around y-axis in radians.
+    :return: Roll, pitch and yaw angles calculated from rotation matrix.
     """
+
     return np.array([[1,          0,            -sin(pitch)],
                      [0,  cos(roll), cos(pitch) * sin(roll)],
                      [0, -sin(roll), cos(pitch) * cos(roll)]])
 
 
-def randomization(values, percentages=0, offsets=0):
+def random_by_percentage(value, percentage):
     """
-    Helps randomization of quadcopter parameters.
-    :param values:
-    :param percentages:
-    :param offsets:
-    :return:
-    """
-    factors = values.flatten() * percentages + offsets
+    Randomize around value by relative bound.
 
-    return np.reshape((2 * np.random.rand(len(factors)) - 1) * factors + values.flatten(), values.shape)
+    :param value: Standard value to randomize around.
+    :param percentage: Percentage which bounds randomization.
+    :return: Random value under given inputs.
+    """
+
+    factor = value * percentage
+
+    return (2 * np.random.random() - 1) * factor + value
+
+
+def random_by_interval(interval, size=1):
+    """
+    Randomize around values by absolute bound.
+
+    :param interval: Interval of form [a, b)
+    :param size: Size of returning array.
+    :return: Random decimal number inside interval.
+    """
+
+    return (interval.high - interval.low) * np.random.random(size) + interval.low
 
 
 def calc_rod_inertia(mass, length, angle):
     """
+    Calculate inertia matrix of rod with equally distributed mass.
 
-    :param mass:
-    :param length:
-    :param angle:
-    :return:
+    :param mass: Mass of rod.
+    :param length: Length of rod.
+    :param angle: Angle between rotation axis and rod.
+    :return: Matrix of inertia of rod.
     """
     return 1/12 * mass * length**2 * sin(angle)**2

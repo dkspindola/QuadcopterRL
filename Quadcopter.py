@@ -6,42 +6,46 @@ import random
 from numpy import tanh, pi
 from ray.rllib.env.env_context import EnvContext
 
-from MathUtils import calc_rot_matrix, calc_rod_inertia, euler_rot_matrix, randomization
+from MathUtils import calc_rot_matrix, calc_rod_inertia, euler_rot_matrix, random_by_interval, random_by_percentage
 
 
 class Quadcopter(gym.Env):
 
-    def __init__(self, config: EnvContext):
+    def __init__(self, env_config: EnvContext):
+        # current environmental configuration, can change due to curriculum learning
+        self.env_config = env_config
+
         # time step [s]
-        self.dt = config["dt"]
-        # number of computed time steps []
-        self.counter = 0
+        self.dt = self.env_config["dt"]
 
         # gravitational acceleration in world coordinate system [m/s^2]
-        self.grav_acc = config["grav_acc"]
+        self.grav_acc = self.env_config["grav_acc"]
 
         # standard mass for randomization [kg]
-        self.standard_mass = config["standard_mass"]
+        self.standard_mass = self.env_config["standard_mass"]
         # standard arm length for randomization [m]
-        self.standard_arm_length = config["standard_arm_length"]
+        self.standard_arm_length = self.env_config["standard_arm_length"]
         # standard settling time for randomization [s]
-        self.standard_settling_time = config["standard_settling_time"]
+        self.standard_settling_time = self.env_config["standard_settling_time"]
         # standard thrust to weight factor for randomization [kg/N]
-        self.standard_thrust_to_weight = config["standard_thrust_to_weight"]
+        self.standard_thrust_to_weight = self.env_config["standard_thrust_to_weight"]
         # standard thrust to torque factor for randomization [s^(-2)]
-        self.standard_thrust_to_torque = config["standard_thrust_to_torque"]
+        self.standard_thrust_to_torque = self.env_config["standard_thrust_to_torque"]
 
-        # maximal positional error for randomization [m]
-        self.max_pos_err = config["max_pos_err"]
-        # maximal linear velocity for randomization[m/s]
-        self.max_lin_vel = config["max_lin_vel"]
-        # maximal angles for randomization [rad]
-        self.max_ang = config["max_ang"]
-        # maximal angular velocity for randomization [rad/s]
-        self.max_ang_vel = config["max_ang_vel"]
+        # end/goal position of agent in world coordinate system [m]
+        self.goal_pos = self.env_config["goal_pos"]
+        # end/goal linear velocity of agent in world coordinate system [m/s]
+        self.goal_lin_vel = self.env_config["goal_lin_vel"]
+        # end/goal rotation matrix from body to world coordinate system
+        self.goal_ang = self.env_config["goal_ang"]
+        # end/goal angular velocity of agent in the body coordinate system [rad/s]
+        self.goal_ang_vel = self.env_config["goal_ang_vel"]
 
         # non negative scalar weights for reward/cost function
-        self.weights = config["weights"]
+        self.weights = self.env_config["weights"]
+
+        # level of complexity for curriculum training
+        self.level = None
 
         # mass of agent [kg]
         self.mass = None
@@ -65,15 +69,6 @@ class Quadcopter(gym.Env):
         # current angular velocity of the agent in the body coordinate system [rad/s]
         self.cur_ang_vel = None
 
-        # end/goal position of agent in world coordinate system [m]
-        self.goal_pos = None
-        # end/goal linear velocity of agent in world coordinate system [m/s]
-        self.goal_lin_vel = None
-        # end/goal rotation matrix from body to world coordinate system
-        self.goal_ang = None
-        # end/goal angular velocity of agent in the body coordinate system [rad/s]
-        self.goal_ang_vel = None
-
         # max thrust of single motor [N]
         self.max_thrust = None
 
@@ -90,22 +85,20 @@ class Quadcopter(gym.Env):
         self.reward_range = (-float('inf'), float('inf'))
 
         # set the seed, is only used for the final (reach goal) reward.
-        self.seed(9)
+        self.seed(1)
 
         #
         self.reset()
 
     def calc_state(self):
         """
-            Calculate the state of the quadcopter.
-            The state consists of the positional error, linear velocity error, rotation matrix and
-            the angular velocity error.
+        Calculate the state of the quadcopter.
+        The state consists of the positional error, linear velocity error, rotation matrix and
+        the angular velocity error.
 
-            Returns
-            -------
-            out : ndarray
-                The calculated state in a merged array.
+        :return: Current state.
         """
+
         # positional error of agent in world coordinate system [m]
         pos_error = self.cur_pos - self.goal_pos
         # linear velocity error of agent in world coordinate system [m/s]
@@ -119,65 +112,53 @@ class Quadcopter(gym.Env):
 
     def calc_lin_acc(self, thrust):
         """
-            Calculate the linear acceleration vector by x_'' = g_ + RF_ / m
-            with g_ (gravitational acceleration vector in world coordinate system),
-            R (rotation matrix from body to world), F_ (total thrust force in body coordinate system) and m (mass).
+        Calculate the linear acceleration vector by x_'' = g_ + RF_ / m
+        with g_ (gravitational acceleration vector in world coordinate system),
+        R (rotation matrix from body to world), F_ (total thrust force in body coordinate system) and m (mass).
 
-            Parameters
-            ----------
-            thrust : ndarray
-                Array of thrust of every single rotor
-
-            Returns
-            -------
-            out : ndarray
-                The calculated linear acceleration vector in world coordinate system.
+        :param thrust: Array of thrust of every single rotor.
+        :return: Linear acceleration vector in world coordinate system.
         """
+
         # total thrust caused by all 4 motors in body coordinate system [N]
         total_thrust = np.array([0, 0, np.sum(thrust)])
 
-        return self.grav_acc + np.dot(total_thrust,
-                                      calc_rot_matrix(self.cur_ang[0], self.cur_ang[1], self.cur_ang[2])) / self.mass
+        return self.grav_acc + np.dot(calc_rot_matrix(self.cur_ang[0], self.cur_ang[1], self.cur_ang[2]),
+                                      total_thrust) / self.mass
 
     def calc_ang_acc(self, thrust):
         """
-            Calculate angular acceleration vector by w_' = I^(-1) * (tau_ - w_ x (I * w_)) with I (inertia tensor),
-            w_ (angular velocity in body coordinate system), tau (total torque in body coordinate system).
+        Calculate angular acceleration vector by w_' = I^(-1) * (tau_ - w_ x (I * w_)) with I (inertia tensor),
+        w_ (angular velocity in body coordinate system), tau (total torque in body coordinate system).
 
-            Parameters
-            ----------
-            thrust : ndarray
-                Array of thrust of every single rotor.
-
-            Returns
-            -------
-            out : ndarray
-                The calculated angular acceleration vector in body coordinate system.
+        :param thrust: Array of thrust of every single rotor.
+        :return: Angular acceleration vector in body coordinate system.
         """
+
+        # distance between axis of rotation and force of thrust
+        dist = np.sqrt(2) / 2 * self.arm_length
+
         # thruster torque caused by thruster forces in body coordinate system [Nm]
-        thruster_torque = np.array([np.dot(np.array([-1, -1, 1,  1]), thrust) * self.arm_length,
-                                    np.dot(np.array([-1,  1, 1, -1]), thrust) * self.arm_length,
+        thruster_torque = np.array([np.dot(np.array([-1, -1, 1,  1]), thrust) * dist,
+                                    np.dot(np.array([-1,  1, 1, -1]), thrust) * dist,
                                     0])
 
         # thruster created around the z-axis caused by rotors different rotations in body coordinate system [Nm]
-        rotation_torque = np.array([0, 0, self.thrust_to_torque * np.dot(np.array([1, -1, 1, -1]), thrust)])
+        rotation_torque = np.array([0, 0, self.thrust_to_torque * np.dot(np.array([-1, 1, -1, 1]), thrust)])
 
         # add up torques
         total_torque = thruster_torque + rotation_torque
 
         return np.dot(np.linalg.inv(self.inertia),
-                      (total_torque - np.cross(self.cur_ang_vel, np.dot(self.cur_ang_vel, self.inertia))))
+                      (total_torque - np.cross(self.cur_ang_vel, np.dot(self.inertia, self.cur_ang_vel))))
 
     def calc_inertia(self):
         """
-            Calculate inertia matrix of quadcopter. The quadcopter is modeled as two crossing rods.
+        Calculate inertia matrix of quadcopter. The quadcopter is modeled as two rods, crossing at an angle of pi/2.
 
-            Returns
-            -------
-            out : ndarray
-                Inertia matrix of quadcopter.
-
+        :return: Inertia matrix of quadcopter.
         """
+
         xx = 2 * calc_rod_inertia(self.mass, 2 * self.arm_length, pi/4)
         yy = 2 * calc_rod_inertia(self.mass, 2 * self.arm_length, pi/4)
         zz = 2 * calc_rod_inertia(self.mass, 2 * self.arm_length, pi/2)
@@ -185,6 +166,12 @@ class Quadcopter(gym.Env):
         return np.array([xx, yy, zz]) * np.eye(3)
 
     def calc_motor_lag(self, action):
+        """
+        Calculates a simulated motor lag.
+
+        :param action: Normalized action for each motor.
+        :return: Simulated motor lag.
+        """
         # normalized motor thrust input
         norm_thrust = 0.5 * (action + 1)
         # normalized angular velocity
@@ -214,9 +201,9 @@ class Quadcopter(gym.Env):
         self.cur_ang_vel = self.cur_ang_vel + ang_acc * self.dt
 
         # compute rate of euler angles (angles_' = E^(-1)(angles_) * w_)
-        euler_ang_vel = np.dot(np.linalg.inv(euler_rot_matrix(self.cur_ang[0], self.cur_ang[1])), self.cur_ang_vel)
-        # compute new angles by  make an euler integration step [rad]
-        self.cur_ang = self.cur_ang + euler_ang_vel * self.dt
+        euler_ang_rates = np.dot(np.linalg.inv(euler_rot_matrix(self.cur_ang[0], self.cur_ang[1])), self.cur_ang_vel)
+        # compute new angles by make an euler integration step [rad]
+        self.cur_ang = self.cur_ang + euler_ang_rates * self.dt
 
         # compute state
         state = self.calc_state()
@@ -234,56 +221,42 @@ class Quadcopter(gym.Env):
                 ) * self.dt
 
         # cost is negative reward
-        reward = -1 * cost
+        reward = -cost
 
-        # increase counter
-        self.counter += 1
-
-        # done if simulated seconds pass
-        # done = self.counter * self.dt >= 4
         done = False
 
         return state, reward, done, {}
 
     def reset(self):
-        # number of computed time steps []
-        self.counter = 0
+        # level of complexity for curriculum training
+        self.level = self.env_config["level"]
 
         # mass of agent [kg]
-        self.mass = self.standard_mass
+        self.mass = random_by_percentage(self.standard_mass, self.env_config["percentage"])
         # distance from quadcopter center to propeller center[m]
-        self.arm_length = self.standard_arm_length
+        self.arm_length = random_by_percentage(self.standard_arm_length, self.env_config["percentage"])
         #
         self.inertia = self.calc_inertia()
         # motor 2% settling time [s]
-        self.settling_time = self.standard_settling_time
+        self.settling_time = random_by_percentage(self.standard_settling_time, self.env_config["percentage"])
         # thrust to weight ratio []
-        self.thrust_to_weight = self.standard_thrust_to_weight
+        self.thrust_to_weight = random_by_percentage(self.standard_thrust_to_weight, self.env_config["percentage"])
         # torque to thrust coefficient []
-        self.thrust_to_torque = self.standard_thrust_to_torque
+        self.thrust_to_torque = random_by_percentage(self.standard_thrust_to_torque, self.env_config["percentage"])
 
         self.max_thrust = 1 / 4 * self.mass * np.abs(self.grav_acc[2]) * self.thrust_to_weight
 
         # reset current motor lag []
         self.cur_motor_lag = np.zeros(4)
 
-        #
-        self.goal_pos = np.array([0, 0, 2])
-        #
-        self.goal_lin_vel = np.zeros(3)
-        #
-        self.goal_ang = np.zeros(3)
-        #
-        self.goal_ang_vel = np.zeros(3)
-
         # reset current position of the agent [m]
-        self.cur_pos = randomization(self.goal_pos, 0, self.max_pos_err)
+        self.cur_pos = random_by_interval(self.env_config["max_pos_err"], 3)
         # reset current linear velocity of the agent in the world coordinate system [m/s]
-        self.cur_lin_vel = randomization(np.array([0, 0, 0]), 0, self.max_lin_vel)
+        self.cur_lin_vel = random_by_interval(self.env_config["max_lin_vel"], 3)
         # reset current angles [rad]
-        self.cur_ang = randomization(np.array([0, 0, 0]), 0, self.max_ang)
+        self.cur_ang = random_by_interval(self.env_config["max_ang"], 3)
         # reset current angular velocity of the agent in the body coordinate system [rad/s]
-        self.cur_ang_vel = randomization(np.array([0, 0, 0]), 0, self.max_ang_vel)
+        self.cur_ang_vel = random_by_interval(self.env_config["max_ang_vel"], 3)
 
         state = self.calc_state()
 
@@ -291,3 +264,11 @@ class Quadcopter(gym.Env):
 
     def seed(self, seed=None):
         random.seed(seed)
+
+    def get_task(self):
+
+        return self.env_config
+
+    def set_task(self, task):
+        self.env_config = task
+        self.reset()
