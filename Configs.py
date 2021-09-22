@@ -39,7 +39,7 @@ config = {
         # maximal linear velocity to sample from [m/s]
         "max_lin_vel": Interval(low=-1, high=1),
         # maximal angles to sample from [rad]
-        "max_ang": Interval(low=-pi/2, high=pi/2),
+        "max_ang": Interval(low=-pi, high=pi),
         # maximal angular velocity to sample from [rad/s]
         "max_ang_vel":  Interval(low=-2*pi, high=2*pi),
 
@@ -71,8 +71,8 @@ config = {
     "sgd_minibatch_size": 2048,
     "num_sgd_iter": 30,
     "train_batch_size": 28800,
-    "lr": 5e-5,
-    "clip_param": 0.2,
+    "lr": 0.00005,
+    "clip_param": 0.05,
 }
 
 config_plot = {
@@ -84,13 +84,13 @@ config_plot = {
         "grav_acc": np.array([0, 0, -9.81]),
 
         # mass of quadcopter [kg]
-        "standard_mass": 0.31,
+        "standard_mass": 0.031,
         # distance from quadcopter center to propeller center [m]
         "standard_arm_length": 0.04,
         # motor 2% settling time [s]
         "standard_settling_time": 0.15,
         # thrust to weight ratio []
-        "standard_thrust_to_weight": 1.9,
+        "standard_thrust_to_weight": 2.0,
         # thrust to torque coefficient []
         "standard_thrust_to_torque": 0.006,
 
@@ -108,12 +108,12 @@ config_plot = {
         # maximal linear velocity to sample from [m/s]
         "max_lin_vel": Interval(low=-1, high=1),
         # maximal angles to sample from [rad]
-        "max_ang": Interval(low=-pi/2, high=pi/2),
+        "max_ang": Interval(low=-pi, high=pi),
         # maximal angular velocity to sample from [rad/s]
         "max_ang_vel": Interval(low=-2*pi, high=2*pi),
 
         # percentage used to randomize quadcopter parameters
-        "percentage": 0.1,
+        "percentage": 0.05,
 
         "level": 0,
 

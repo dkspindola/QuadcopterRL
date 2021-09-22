@@ -79,15 +79,48 @@ def read_csv(csv_path):
     return data
 
 
-trajectory_from_sim("/home/davi/ray_results/PPO/PPO_Quadcopter_335d0_00000_0_2021-08-31_13-04-24/checkpoint_001075/checkpoint-1075", config_plot["env_config"], 4000)
+trajectory_from_sim("/home/davi/ray_results/PPO/PPO_Quadcopter_9d44b_00000_0_2021-09-08_20-57-29/checkpoint_002100/checkpoint-2100", config_plot["env_config"], 4000)
 
-"""
-trajectory_from_csv("/home/davi/.config/cfclient/logdata/20210823T11-42-58/My_Drone-pos_err-20210823T11-43-53.csv",
-                    "/home/davi/.config/cfclient/logdata/20210823T11-42-58/My_Drone-lin_vel_err-20210823T11-43-53.csv",
+# s2mr hover
+'''
+trajectory_from_csv("//home/davi/.config/cfclient/logdata/s2mr_hover/My_Drone-pos_err-20210917T15-39-53.csv",
+                    "//home/davi/.config/cfclient/logdata/s2mr_hover/My_Drone-lin_vel_err-20210917T15-39-52.csv",
                     "/home/davi/.config/cfclient/logdata/20210823T11-42-58/My_Drone-rot_matrix0-20210823T11-43-54.csv",
                     "/home/davi/.config/cfclient/logdata/20210823T11-42-58/My_Drone-rot_matrix1-20210823T11-43-54.csv",
                     "/home/davi/.config/cfclient/logdata/20210823T11-42-58/My_Drone-rot_matrix2-20210823T11-43-55.csv",
-                    "/home/davi/.config/cfclient/logdata/20210823T11-42-58/My_Drone-ang_vel_err-20210823T11-43-52.csv",
-                    "/home/davi/.config/cfclient/logdata/20210823T11-42-58/My_Drone-action-20210823T11-43-52.csv",
-                    "/home/davi/.config/cfclient/logdata/20210823T11-42-58/stabilizer-20210823T11-43-57.csv"
-                    )"""
+                    "//home/davi/.config/cfclient/logdata/s2mr_hover/My_Drone-ang_vel_err-20210917T15-39-52.csv",
+                    "//home/davi/.config/cfclient/logdata/s2mr_hover/My_Drone-action-20210917T15-39-51.csv",
+                    "//home/davi/.config/cfclient/logdata/s2mr_hover/stabilizer-20210917T15-39-54.csv"
+                    )
+
+# my hover
+trajectory_from_csv("//home/davi/.config/cfclient/logdata/my_hover/My_Drone-pos_err-20210917T15-41-08.csv",
+                    "//home/davi/.config/cfclient/logdata/my_hover/My_Drone-lin_vel_err-20210917T15-41-07.csv",
+                    "/home/davi/.config/cfclient/logdata/20210823T11-42-58/My_Drone-rot_matrix0-20210823T11-43-54.csv",
+                    "/home/davi/.config/cfclient/logdata/20210823T11-42-58/My_Drone-rot_matrix1-20210823T11-43-54.csv",
+                    "/home/davi/.config/cfclient/logdata/20210823T11-42-58/My_Drone-rot_matrix2-20210823T11-43-55.csv",
+                    "//home/davi/.config/cfclient/logdata/my_hover/My_Drone-ang_vel_err-20210917T15-41-07.csv",
+                    "//home/davi/.config/cfclient/logdata/my_hover/My_Drone-action-20210917T15-41-07.csv",
+                    "//home/davi/.config/cfclient/logdata/my_hover/stabilizer-20210917T15-41-09.csv"
+                    )
+
+
+trajectory_from_csv("/home/davi/.config/cfclient/logdata/20210917T17-28-51/My_Drone-pos_err-20210917T17-29-51.csv",
+                    "/home/davi/.config/cfclient/logdata/20210917T17-28-51/My_Drone-lin_vel_err-20210917T17-29-50.csv",
+                    "/home/davi/.config/cfclient/logdata/20210823T11-42-58/My_Drone-rot_matrix0-20210823T11-43-54.csv",
+                    "/home/davi/.config/cfclient/logdata/20210823T11-42-58/My_Drone-rot_matrix1-20210823T11-43-54.csv",
+                    "/home/davi/.config/cfclient/logdata/20210823T11-42-58/My_Drone-rot_matrix2-20210823T11-43-55.csv",
+                    "/home/davi/.config/cfclient/logdata/20210917T17-28-51/My_Drone-ang_vel_err-20210917T17-29-49.csv",
+                    "/home/davi/.config/cfclient/logdata/20210917T17-28-51/My_Drone-action-20210917T17-29-49.csv",
+                    "/home/davi/.config/cfclient/logdata/20210917T17-28-51/stabilizer-20210917T17-29-51.csv"
+                    )
+
+trajectory_from_csv("/home/davi/.config/cfclient/logdata/20210917T17-26-39/My_Drone-pos_err-20210917T17-27-32.csv",
+                    "/home/davi/.config/cfclient/logdata/20210917T17-26-39/My_Drone-lin_vel_err-20210917T17-27-32.csv",
+                    "/home/davi/.config/cfclient/logdata/20210823T11-42-58/My_Drone-rot_matrix0-20210823T11-43-54.csv",
+                    "/home/davi/.config/cfclient/logdata/20210823T11-42-58/My_Drone-rot_matrix1-20210823T11-43-54.csv",
+                    "/home/davi/.config/cfclient/logdata/20210823T11-42-58/My_Drone-rot_matrix2-20210823T11-43-55.csv",
+                    "/home/davi/.config/cfclient/logdata/20210917T17-26-39/My_Drone-ang_vel_err-20210917T17-27-32.csv",
+                    "/home/davi/.config/cfclient/logdata/20210917T17-26-39/My_Drone-action-20210917T17-27-31.csv",
+                    "/home/davi/.config/cfclient/logdata/20210917T17-26-39/stabilizer-20210917T17-27-34.csv"
+                    )'''

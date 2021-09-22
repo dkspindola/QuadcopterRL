@@ -85,4 +85,4 @@ def make_header(checkpoint_dir):
     ray.shutdown()
 
 
-# make_header('/home/davi/ray_results/PPO/PPO_Quadcopter_335d0_00000_0_2021-08-31_13-04-24/checkpoint_000980/checkpoint-980')
+make_header('/home/davi/ray_results/PPO/PPO_Quadcopter_335d0_00000_0_2021-08-31_13-04-24/checkpoint_001075/checkpoint-1075')
