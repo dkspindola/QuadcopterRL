@@ -9,12 +9,14 @@ from MathUtils import calc_angles
 
 def plot(actions, angles, observations, env, reward):
     """
+    Plots the given data.
 
-    :param actions:
-    :param angles:
-    :param observations:
-    :param env:
-    :param reward:
+    :param actions: Array of actions.
+    :param angles: Array of angles.
+    :param observations: Array of observations.
+    :param env: Parameters of environment.
+    :param reward: Array of rewards.
+    :param reward: Array of rewards.
     :return:
     """
     # set font size
@@ -119,56 +121,21 @@ def plot(actions, angles, observations, env, reward):
     plt.show()
 
 
-def plot_csv(pos_errs, lin_vel_errs, rot_mat_0, rot_mat_1, rot_mat_2, ang_vel_errs, actions, stabilizer_angles):
+def plot_csv(pos_errs, lin_vel_errs, ang_vel_errs, actions, stabilizer_angles):
     """
+    Plots the given data which was gathered from a csv file.
 
-    :param pos_errs:
-    :param lin_vel_errs:
-    :param rot_mat_0:
-    :param rot_mat_1:
-    :param rot_mat_2:
-    :param ang_vel_errs:
-    :param actions:
-    :param stabilizer_angles:
+    :param pos_errs: Array of position errors.
+    :param lin_vel_errs: Array of linear velocity errors.
+    :param ang_vel_errs: Array of angle velocity errors.
+    :param actions: Array of actions.
+    :param stabilizer_angles: Array of angeles.
     :return:
     """
 
     # set font size
     mpl.rcParams['legend.fontsize'] = 10
     fig = plt.figure(dpi=100, edgecolor='black', facecolor='white')
-    '''
-    ax = fig.add_subplot(3, 4, 1, projection="3d")
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("z")
-    ax.set_xlim([-1.25, 1.25])
-    ax.set_ylim([-1.25, 1.25])
-    ax.set_zlim([-1.25, 1.25])
-    ax.scatter(pos_errs[1], pos_errs[2], pos_errs[3], color="grey")
-    ax.text(pos_errs[1], pos_errs[2], pos_errs[3], " start")
-    # ax.scatter(0, 0, 0, color="green")
-    # ax.text(0, 0, 0, "goal")
-
-    ax.scatter(1, 0, 0, color="green")
-    ax.text(1, 0, 0, " p1")
-    ax.scatter(-1, 0, 0, color="green")
-    ax.text(-1, 0, 0, " p2")
-    ax.scatter(0, 1, 0, color="green")
-    ax.text(0, 1, 0, " p3")
-    ax.scatter(0, -1, 0, color="green")
-    ax.text(0, -1, 0, " p4")
-    ax.scatter(0, 0, 1, color="green")
-    ax.text(0, 0, 1, " p5")
-    ax.scatter(0, 0, -1, color="green")
-    ax.text(0, 0, -1, " p6")
-
-    ax.quiver([pos_errs[1]], [pos_errs[2]], [pos_errs[3]],
-              lin_vel_errs[1], lin_vel_errs[2], lin_vel_errs[3],
-              length=np.linalg.norm([lin_vel_errs[1], lin_vel_errs[2], lin_vel_errs[3]]),
-              arrow_length_ratio=.1,
-              color="tab:pink")
-    ax.plot(pos_errs[1::4], pos_errs[2::4], pos_errs[3::4], color="tab:purple", label="position in [m]")
-    '''
     ax = fig.add_subplot(2, 4, 1)
     ax.set_xlabel("timestamp in []")
     ax.set_ylabel("position error in [m]")
@@ -192,22 +159,6 @@ def plot_csv(pos_errs, lin_vel_errs, rot_mat_0, rot_mat_1, rot_mat_2, ang_vel_er
     ax.plot(lin_vel_errs[0::4], lin_vel_errs[2::4], label="d(y)/d(t)")
     ax.plot(lin_vel_errs[0::4], lin_vel_errs[3::4], label="d(z)/d(t)")
     ax.legend()
-    '''
-    angles = np.array([])
-    for i in range(0, len(rot_mat_2), 4):
-        rot_mat_col_0 = rot_mat_0[i + 1:i + 4]
-        rot_mat_col_1 = rot_mat_1[i + 1:i + 4]
-        rot_mat_col_2 = rot_mat_2[i + 1:i + 4]
-        rot_mat = np.concatenate([rot_mat_col_0, rot_mat_col_1, rot_mat_col_2])
-        angles = np.append(angles, rot_mat_0[i])
-        angles = np.append(angles, np.array(calc_angles(np.reshape(rot_mat, (3, 3)))))
-    ax = fig.add_subplot(3, 4, 5)
-    ax.set_xlabel("timestamp in []")
-    ax.set_ylabel("angle error in [rad]")
-    ax.plot(angles[0::4], angles[1::4], label="roll")
-    ax.plot(angles[0::4], angles[2::4], label="pitch")
-    ax.plot(angles[0::4], angles[3::4], label="yaw")
-    ax.legend()'''
 
     ax = fig.add_subplot(2, 4, 3)
     ax.set_xlabel("timestamp in []")
@@ -255,6 +206,7 @@ def plot_csv(pos_errs, lin_vel_errs, rot_mat_0, rot_mat_1, rot_mat_2, ang_vel_er
     ax.plot(np.abs(np.fft.fft(ang_vel_errs[2::4])))
     ax.plot(np.abs(np.fft.fft(ang_vel_errs[3::4])))
     '''
+
     ax = fig.add_subplot(2, 4, 5)
     ax.set_xlabel("timestamp in []")
     ax.set_ylabel("action in []")
